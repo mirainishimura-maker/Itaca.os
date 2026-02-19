@@ -29,10 +29,32 @@ st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
 
 # ── INIT DB ──
 db.init_db()
+# --- LÓGICA DE LOGIN ---
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
 
-# ── SIDEBAR ──
+if not st.session_state.authenticated:
+    st.markdown(f"## {APP_ICON} Bienvenido a {APP_NAME}")
+    with st.form("login_form"):
+        email_input = st.text_input("Correo electrónico")
+        pass_input = st.text_input("Contraseña", type="password")
+        if st.form_submit_button("Entrar a la Odisea", type="primary"):
+            user = db.get_user(email_input)
+            if user and pass_input == user["password"]:
+                st.session_state.authenticated = True
+                st.session_state.current_user = email_input
+                st.session_state.user_rol = user["rol"]
+                st.success("¡Bienvenido a bordo!")
+                st.rerun()
+            else:
+                st.error("Credenciales incorrectas. Revisa tu correo o contraseña.")
+    st.stop() # Detiene la ejecución aquí si no está autenticado
+
+# --- SI ESTÁ AUTENTICADO, MOSTRAR EL RESTO ---
 from components.sidebar import render_sidebar
 render_sidebar()
+
+# (Aquí sigue el resto de tu código del PAGE ROUTER...)
 
 # ── PAGE ROUTER ──
 PAGE_MAP = {
