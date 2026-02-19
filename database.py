@@ -34,9 +34,15 @@ def init_db():
     with get_db() as db:
         db.executescript("""
         CREATE TABLE IF NOT EXISTS usuarios (
-            email TEXT PRIMARY KEY, nombre TEXT, rol TEXT DEFAULT 'Colaborador',
-            estado TEXT DEFAULT 'Activo', unidad TEXT, email_lider TEXT,
-            fecha_registro TEXT, ultimo_acceso TEXT
+            email TEXT PRIMARY KEY, 
+            nombre TEXT, 
+            rol TEXT DEFAULT 'Colaborador',
+            estado TEXT DEFAULT 'Activo', 
+            unidad TEXT, 
+            email_lider TEXT,
+            password TEXT DEFAULT 'Itaca2026!', 
+            fecha_registro TEXT, 
+            ultimo_acceso TEXT
         );
         CREATE TABLE IF NOT EXISTS identidad (
             email TEXT PRIMARY KEY, nombre TEXT, foto_url TEXT, puesto TEXT,
