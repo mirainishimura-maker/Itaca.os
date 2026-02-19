@@ -70,3 +70,9 @@ def render_sidebar():
         
         st.divider()
         st.caption(f"v2.0 · Odisea 2026")
+
+st.divider()
+if st.button("🚪 Cerrar sesión", use_container_width=True):
+    st.session_state.authenticated = False
+    st.session_state.current_user = ""
+    st.rerun()
