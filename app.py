@@ -29,14 +29,15 @@ st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
 
 # ── INIT DB ──
 db.init_db()
-# --- LÓGICA DE LOGIN ---
+
+# --- LÓGICA DE LOGIN Y SEGURIDAD ---
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
 if not st.session_state.authenticated:
     st.markdown(f"## {APP_ICON} Bienvenido a {APP_NAME}")
     with st.form("login_form"):
-        email_input = st.text_input("Correo electrónico")
+        email_input = st.text_input("Correo electrónico").lower().strip()
         pass_input = st.text_input("Contraseña", type="password")
         if st.form_submit_button("Entrar a la Odisea", type="primary"):
             user = db.get_user(email_input)
@@ -44,11 +45,32 @@ if not st.session_state.authenticated:
                 st.session_state.authenticated = True
                 st.session_state.current_user = email_input
                 st.session_state.user_rol = user["rol"]
-                st.success("¡Bienvenido a bordo!")
                 st.rerun()
             else:
-                st.error("Credenciales incorrectas. Revisa tu correo o contraseña.")
-    st.stop() # Detiene la ejecución aquí si no está autenticado
+                st.error("Credenciales incorrectas.")
+    st.stop()
+
+# --- MODAL DE CAMBIO DE CONTRASEÑA OBLIGATORIO ---
+user_data = db.get_user(st.session_state.current_user)
+if user_data["password"] == "Itaca2026!":
+    st.warning("⚠️ **Seguridad requerida:** Debes cambiar tu contraseña inicial antes de continuar.")
+    with st.form("change_password_form"):
+        new_pass = st.text_input("Nueva contraseña", type="password", help="Elige algo seguro que solo tú sepas.")
+        confirm_pass = st.text_input("Confirma tu nueva contraseña", type="password")
+        if st.form_submit_button("Actualizar y Entrar", type="primary"):
+            if len(new_pass) < 6:
+                st.error("La contraseña debe tener al menos 6 caracteres.")
+            elif new_pass != confirm_pass:
+                st.error("Las contraseñas no coinciden.")
+            elif new_pass == "Itaca2026!":
+                st.error("No puedes usar la contraseña inicial.")
+            else:
+                db.update_password(st.session_state.current_user, new_pass)
+                st.success("¡Contraseña actualizada! Bienvenido a bordo.")
+                st.balloons()
+                st.rerun()
+    st.stop() # No deja pasar al resto de la app hasta que cambie la clave
+
 
 # --- SI ESTÁ AUTENTICADO, MOSTRAR EL RESTO ---
 from components.sidebar import render_sidebar
