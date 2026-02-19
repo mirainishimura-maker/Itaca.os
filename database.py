@@ -222,8 +222,8 @@ def seed_data():
         ]
         for u in users:
             email, nombre, rol, estado, unidad, email_lider, cargo, cel, ingreso = u
-            db.execute("INSERT OR IGNORE INTO usuarios VALUES (?,?,?,?,?,?,?,?)",
-                (email, nombre, rol, estado, unidad, email_lider, now, now))
+            db.execute("INSERT OR IGNORE INTO usuarios VALUES (?,?,?,?,?,?,?,?,?)",
+                (email, nombre, rol, estado, unidad, email_lider, now, now, 'Itaca2026!'))
             db.execute("""INSERT OR IGNORE INTO identidad
                 (email,nombre,puesto,rol,unidad,estado,email_lider,telefono,fecha_ingreso,fecha_actualizacion)
                 VALUES (?,?,?,?,?,?,?,?,?,?)""",
