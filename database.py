@@ -34,15 +34,10 @@ def init_db():
     with get_db() as db:
         db.executescript("""
         CREATE TABLE IF NOT EXISTS usuarios (
-            email TEXT PRIMARY KEY, 
-            nombre TEXT, 
-            rol TEXT DEFAULT 'Colaborador',
-            estado TEXT DEFAULT 'Activo', 
-            unidad TEXT, 
-            email_lider TEXT,
-            password TEXT DEFAULT 'Itaca2026!', 
-            fecha_registro TEXT, 
-            ultimo_acceso TEXT
+            email TEXT PRIMARY KEY, nombre TEXT, rol TEXT DEFAULT 'Colaborador',
+            estado TEXT DEFAULT 'Activo', unidad TEXT, email_lider TEXT,
+            fecha_registro TEXT, ultimo_acceso TEXT,
+            password TEXT DEFAULT 'Itaca2026!'
         );
         CREATE TABLE IF NOT EXISTS identidad (
             email TEXT PRIMARY KEY, nombre TEXT, foto_url TEXT, puesto TEXT,
@@ -229,7 +224,7 @@ def seed_data():
                 VALUES (?,?,?,?,?,?,?,?,?,?)""",
                 (email, nombre, cargo, rol, unidad, estado, email_lider, cel, ingreso, now))
         # Algunos check-ins de ejemplo
-        for i, email in enumerate(["pedro@itaca.com","lucia@itaca.com","diego@itaca.com"]):
+        for i, email in enumerate(["astrid.vivas@itaca.com","grecia.elera@itaca.com","daniela.collantes@itaca.com"]):
             for w in range(4):
                 d = datetime.now() - timedelta(weeks=w)
                 estados = ["GENIAL","NORMAL","DIFICIL","NORMAL"]
@@ -287,11 +282,6 @@ def get_team_members(email_lider):
         return dict_rows(db.execute(
             "SELECT * FROM identidad WHERE unidad=? AND email!=? AND estado='Activo'",
             (user["unidad"], email_lider)).fetchall())
-
-def update_password(email, new_password):
-    with get_db() as db:
-        db.execute("UPDATE usuarios SET password = ? WHERE email = ?", (new_password, email))
-    return True
 
 # ── CHECK-INS ──
 def save_checkin(email, estado, estres, area, etiquetas, comentario):
@@ -494,6 +484,80 @@ def get_analytics():
             "faros_mes": faros_mes, "total_faros": total_faros,
             "tasa_checkin": round((checkins_week / max(total_users, 1)) * 100),
         }
+
+# ═══════════════════════════════════════════
+# ADMIN: GESTIÓN DE COLABORADORES
+# ═══════════════════════════════════════════
+
+def update_password(email, new_password):
+    """Actualizar contraseña de un usuario"""
+    with get_db() as db:
+        db.execute("UPDATE usuarios SET password=? WHERE email=?", (new_password, email))
+
+def add_colaborador(email, nombre, rol, unidad, email_lider, cargo, telefono, fecha_ingreso):
+    """Agregar un nuevo colaborador (desde panel admin)"""
+    now = datetime.now().isoformat()
+    with get_db() as conn:
+        existing = conn.execute("SELECT 1 FROM usuarios WHERE email=?", (email,)).fetchone()
+        if existing:
+            return False, "Ya existe un usuario con ese email."
+        conn.execute("INSERT INTO usuarios VALUES (?,?,?,?,?,?,?,?,?)",
+            (email, nombre, rol, "Activo", unidad, email_lider, now, now, "Itaca2026!"))
+        conn.execute("""INSERT INTO identidad
+            (email,nombre,puesto,rol,unidad,estado,email_lider,telefono,fecha_ingreso,fecha_actualizacion)
+            VALUES (?,?,?,?,?,?,?,?,?,?)""",
+            (email, nombre, cargo, rol, unidad, "Activo", email_lider, telefono, fecha_ingreso, now))
+    return True, f"✅ {nombre} agregado exitosamente."
+
+def deactivate_colaborador(email):
+    """Desactivar un colaborador (no se borra, se marca inactivo)"""
+    with get_db() as conn:
+        conn.execute("UPDATE usuarios SET estado='Inactivo' WHERE email=?", (email,))
+        conn.execute("UPDATE identidad SET estado='Inactivo' WHERE email=?", (email,))
+    return True, "Colaborador desactivado."
+
+def reactivate_colaborador(email):
+    """Reactivar un colaborador"""
+    with get_db() as conn:
+        conn.execute("UPDATE usuarios SET estado='Activo' WHERE email=?", (email,))
+        conn.execute("UPDATE identidad SET estado='Activo' WHERE email=?", (email,))
+    return True, "Colaborador reactivado."
+
+def update_colaborador(email, **kwargs):
+    """Actualizar datos de un colaborador (nombre, rol, unidad, etc.)"""
+    with get_db() as conn:
+        # Update usuarios
+        user_fields = {k: v for k, v in kwargs.items() if k in ("nombre","rol","unidad","email_lider")}
+        if user_fields:
+            sets = ", ".join(f"{k}=?" for k in user_fields)
+            conn.execute(f"UPDATE usuarios SET {sets} WHERE email=?", (*user_fields.values(), email))
+        # Update identidad
+        ident_fields = {k: v for k, v in kwargs.items() if k in ("nombre","rol","unidad","email_lider","puesto","telefono")}
+        if ident_fields:
+            sets = ", ".join(f"{k}=?" for k in ident_fields)
+            conn.execute(f"UPDATE identidad SET {sets}, fecha_actualizacion=? WHERE email=?",
+                (*ident_fields.values(), datetime.now().isoformat(), email))
+
+def reset_password(email):
+    """Resetear contraseña a la default"""
+    with get_db() as conn:
+        conn.execute("UPDATE usuarios SET password='Itaca2026!' WHERE email=?", (email,))
+    return True, "Contraseña reseteada a Itaca2026!"
+
+def get_all_users_admin():
+    """Obtener TODOS los usuarios (activos e inactivos) para el panel admin"""
+    with get_db() as conn:
+        return dict_rows(conn.execute("""
+            SELECT u.*, i.puesto, i.telefono, i.fecha_ingreso
+            FROM usuarios u
+            LEFT JOIN identidad i ON u.email = i.email
+            ORDER BY u.estado DESC, u.unidad, u.nombre""").fetchall())
+
+def get_units():
+    """Obtener lista de unidades únicas"""
+    with get_db() as conn:
+        rows = conn.execute("SELECT DISTINCT unidad FROM usuarios WHERE unidad IS NOT NULL AND unidad != '' ORDER BY unidad").fetchall()
+        return [r[0] for r in rows]
 
 # Inicializar al importar
 init_db()
