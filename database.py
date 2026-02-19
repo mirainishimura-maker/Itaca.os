@@ -288,6 +288,11 @@ def get_team_members(email_lider):
             "SELECT * FROM identidad WHERE unidad=? AND email!=? AND estado='Activo'",
             (user["unidad"], email_lider)).fetchall())
 
+def update_password(email, new_password):
+    with get_db() as db:
+        db.execute("UPDATE usuarios SET password = ? WHERE email = ?", (new_password, email))
+    return True
+
 # ── CHECK-INS ──
 def save_checkin(email, estado, estres, area, etiquetas, comentario):
     now = datetime.now()
